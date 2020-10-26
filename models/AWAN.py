@@ -239,8 +239,3 @@ if __name__ == "__main__":
     print(output_tensor.size())
     print('Parameters number is ', sum(param.numel() for param in model.parameters()))
     print(torch.__version__)
-
-
-
-
-

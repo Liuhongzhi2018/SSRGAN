@@ -50,8 +50,8 @@ class HyperDatasetTrain(udata.Dataset):
 
     def __getitem__(self, index):
         mat = h5py.File(self.keys[index], 'r')
-        hyper = np.float32(np.array(mat['cube']))
         # hyper = np.float32(np.array(mat['rad']))
+        hyper = np.float32(np.array(mat['cube']))
         hyper = np.transpose(hyper, [1, 0, 2])
         hyper = torch.Tensor(hyper)
         rgb = np.float32(np.array(mat['rgb']))
