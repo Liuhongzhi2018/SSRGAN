@@ -1,33 +1,41 @@
-import numpy as np
 import os
 import ntpath
 import time
 from . import util
 from . import html
 import scipy.misc
-try:
-    from StringIO import StringIO  # Python 2.7
-except ImportError:
-    from io import BytesIO         # Python 3.x
+# try:
+#     from StringIO import StringIO  # Python 2.7
+# except ImportError:
+#     from io import BytesIO         # Python 3.x
+from io import BytesIO
+from .SpectralUtils import savePNG, projectToRGB
+import numpy as np
+from PIL import Image
+
 
 class Visualizer():
     def __init__(self, opt):
         # self.opt = opt
-        self.tf_log = opt.tf_log
-        self.use_html = opt.isTrain and not opt.no_html
-        self.win_size = opt.display_winsize
+        # self.tf_log = opt.tf_log
+        # self.use_html = opt.isTrain and not opt.no_html
+        # self.win_size = opt.display_winsize
         self.name = opt.name
-        if self.tf_log:
-            import tensorflow as tf
-            self.tf = tf
-            self.log_dir = os.path.join(opt.checkpoints_dir, opt.name, 'logs')
-            self.writer = tf.summary.FileWriter(self.log_dir)
+        self.savepath = os.path.join(opt.checkpoints_dir, opt.name, 'samples')
+        os.makedirs(self.savepath, exist_ok=True)
 
-        if self.use_html:
-            self.web_dir = os.path.join(opt.checkpoints_dir, opt.name, 'web')
-            self.img_dir = os.path.join(self.web_dir, 'images')
-            print('create web directory %s...' % self.web_dir)
-            util.mkdirs([self.web_dir, self.img_dir])
+        # if self.tf_log:
+        #     import tensorflow as tf
+        #     self.tf = tf
+        #     self.log_dir = os.path.join(opt.checkpoints_dir, opt.name, 'logs')
+        #     self.writer = tf.summary.FileWriter(self.log_dir)
+
+        # if self.use_html:
+        #     self.web_dir = os.path.join(opt.checkpoints_dir, opt.name, 'web')
+        #     self.img_dir = os.path.join(self.web_dir, 'images')
+        #     print('create web directory %s...' % self.web_dir)
+        #     util.mkdirs([self.web_dir, self.img_dir])
+
         self.log_name = os.path.join(opt.checkpoints_dir, opt.name, 'loss_log.txt')
         with open(self.log_name, "a") as log_file:
             now = time.strftime("%c")
@@ -35,14 +43,16 @@ class Visualizer():
 
     # |visuals|: dictionary of images to display or save
     def display_current_results(self, visuals, epoch, step):
-        if self.tf_log: # show images in tensorboard output
+        if self.tf_log:
+            # show images in tensorboard output
             img_summaries = []
             for label, image_numpy in visuals.items():
-                # Write the image to a string
-                try:
-                    s = StringIO()
-                except:
-                    s = BytesIO()
+                # # Write the image to a string
+                # try:
+                #     s = StringIO()
+                # except:
+                #     s = BytesIO()
+                s = BytesIO()
                 scipy.misc.toimage(image_numpy).save(s, format="jpeg")
                 # Create an Image object
                 img_sum = self.tf.Summary.Image(encoded_image_string=s.getvalue(), height=image_numpy.shape[0], width=image_numpy.shape[1])
@@ -53,7 +63,8 @@ class Visualizer():
             summary = self.tf.Summary(value=img_summaries)
             self.writer.add_summary(summary, step)
 
-        if self.use_html: # save images to a html file
+        # save images to a html file
+        if self.use_html:
             for label, image_numpy in visuals.items():
                 if isinstance(image_numpy, list):
                     for i in range(len(image_numpy)):
@@ -99,8 +110,8 @@ class Visualizer():
                 self.writer.add_summary(summary, step)
 
     # errors: same format as |errors| of plotCurrentErrors
-    def print_current_errors(self, epoch, i, errors, t):
-        message = '(epoch: %d, iters: %d, time: %.3f) ' % (epoch, i, t)
+    def print_current_errors(self, epoch, iter, errors, t):
+        message = '(epoch: %d, iters: %d, time: %.3f) ' % (epoch, iter, t)
         for k, v in errors.items():
             if v != 0:
                 message += '%s: %.3f ' % (k, v)
@@ -129,3 +140,49 @@ class Visualizer():
             txts.append(label)
             links.append(image_name)
         webpage.add_images(ims, txts, links, width=self.win_size)
+
+    # save image and hsi sample
+    def display_samples(self, rgb, hyper, generated, epoch, total_steps):
+        BIT_8 = 256
+        filtersPath = "./cie_1964_w_gain.npz"
+        # savePath = "./output/"
+
+        # Load HS image and filters
+        # cube = loadmat(filePath)['cube']
+        filters = np.load(filtersPath)['filters']
+
+        # Project HSI to RGB
+        hyper_numpy = hyper.cpu().float().numpy().squeeze(0)
+        hyper_numpy = np.transpose(hyper_numpy, (1, 2, 0))
+        hyper_RGB = np.true_divide(projectToRGB(hyper_numpy, filters), BIT_8)
+        # print("hyper_RGB: ", hyper_RGB.min(), hyper_RGB.max())
+        hyper_path = os.path.join(self.savepath, 'hyper_' + str(epoch) + '_' + str(total_steps) + '.png')
+        savePNG(hyper_RGB, hyper_path)
+
+        # Project generated to RGB
+        generated_numpy = generated.detach().cpu().float().numpy().squeeze(0)
+        generated_numpy = np.transpose(generated_numpy, (1, 2, 0))
+        generated_RGB = np.true_divide(projectToRGB(generated_numpy, filters), BIT_8)
+        generated_RGB = (generated_RGB - generated_RGB.min())/(generated_RGB.max()-generated_RGB.min())
+        # print("generated_RGB: ", generated_RGB)
+        # image_numpy = np.clip(image_numpy, 0, 255)
+        gen_path = os.path.join(self.savepath, 'gen_' + str(epoch) + '_' + str(total_steps) + '.png')
+        savePNG(generated_RGB, gen_path)
+
+        # Save image file
+        # fileName = splitext(basename(filePath))[0]
+        image_numpy = rgb.cpu().float().numpy().squeeze(0)
+        # image_numpy = (np.transpose(image_numpy, (1, 2, 0)) + 1) / 2.0 * 255.0
+        # image_numpy = np.clip(image_numpy, 0, 255)
+        # print("image_numpy: ", image_numpy)
+        # image_numpy = np.transpose(image_numpy, (1, 2, 0))
+        image_numpy = (image_numpy - image_numpy.min())/(image_numpy.max()-image_numpy.min())
+        image_numpy = (np.transpose(image_numpy, (1, 2, 0)) + 1) / 2.0 * 255.0
+        path = os.path.join(self.savepath, 'RGBin_' + str(epoch) + '_' + str(total_steps) + '.png')
+        # savePNG(image_numpy, path)
+        img = Image.fromarray(np.uint8(image_numpy))
+        img.save(path)
+
+        # # Display RGB image
+        # img = cv.imread(path)
+        # img = cv.cvtColor(img, cv.COLOR_BGR2RGB)

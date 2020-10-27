@@ -2,8 +2,8 @@ import torch
 
 
 def create_model(opt):
-    from .pix2pixHD_model import Pix2PixHDModel
-    model = Pix2PixHDModel()
+    from .SSRGAN import SSRGAN
+    model = SSRGAN()
     model.initialize(opt)
 
     if len(opt.gpu_ids):

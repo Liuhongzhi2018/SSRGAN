@@ -2,14 +2,14 @@ import numpy as np
 import torch
 import os
 from torch.autograd import Variable
-from util.image_pool import ImagePool
+from utils.image_pool import ImagePool
 from .base_model import BaseModel
 from . import networks
 
 
-class Pix2PixHDModel(BaseModel):
+class SSRGAN(BaseModel):
     def name(self):
-        return 'Pix2PixHDModel'
+        return 'SSRGAN'
 
     def init_loss_filter(self, use_gan_feat_loss, use_vgg_loss):
         flags = (True, use_gan_feat_loss, use_vgg_loss, True, True)
@@ -27,14 +27,17 @@ class Pix2PixHDModel(BaseModel):
         self.gen_features = self.use_features and not self.opt.load_features
         # input_nc = opt.label_nc if opt.label_nc != 0 else opt.input_nc
         input_nc = opt.input_nc
+        # print("self.gpu_ids: ", self.gpu_ids)
 
         # define networks
         # Generator network
         netG_input_nc = input_nc
-        if not opt.no_instance:
-            netG_input_nc += 1
-        if self.use_features:
-            netG_input_nc += opt.feat_num
+        # print("netG_input_nc: ", netG_input_nc)
+        # if not opt.no_instance:
+        #     netG_input_nc += 1
+        # if self.use_features:
+        #     netG_input_nc += opt.feat_num
+        # print("netG_input_nc: ", netG_input_nc)  # channel=3
         self.netG = networks.define_G(netG_input_nc, opt.output_nc, opt.ngf, opt.netG,
                                       opt.n_downsample_global, opt.n_blocks_global, opt.n_local_enhancers,
                                       opt.n_blocks_local, opt.norm, gpu_ids=self.gpu_ids)
@@ -43,8 +46,8 @@ class Pix2PixHDModel(BaseModel):
         if self.isTrain:
             use_sigmoid = opt.no_lsgan
             netD_input_nc = input_nc + opt.output_nc
-            if not opt.no_instance:
-                netD_input_nc += 1
+            # if not opt.no_instance:
+            #     netD_input_nc += 1
             self.netD = networks.define_D(netD_input_nc, opt.ndf, opt.n_layers_D, opt.norm, use_sigmoid,
                                           opt.num_D, not opt.no_ganFeat_loss, gpu_ids=self.gpu_ids)
 
@@ -55,14 +58,14 @@ class Pix2PixHDModel(BaseModel):
         if self.opt.verbose:
             print('---------- Networks initialized -------------')
 
-        # load networks
-        if not self.isTrain or opt.continue_train or opt.load_pretrain:
-            pretrained_path = '' if not self.isTrain else opt.load_pretrain
-            self.load_network(self.netG, 'G', opt.which_epoch, pretrained_path)
-            if self.isTrain:
-                self.load_network(self.netD, 'D', opt.which_epoch, pretrained_path)
-            if self.gen_features:
-                self.load_network(self.netE, 'E', opt.which_epoch, pretrained_path)
+        # # load networks
+        # if not self.isTrain or opt.continue_train or opt.load_pretrain:
+        #     pretrained_path = '' if not self.isTrain else opt.load_pretrain
+        #     self.load_network(self.netG, 'G', opt.which_epoch, pretrained_path)
+        #     if self.isTrain:
+        #         self.load_network(self.netD, 'D', opt.which_epoch, pretrained_path)
+        #     if self.gen_features:
+        #         self.load_network(self.netE, 'E', opt.which_epoch, pretrained_path)
 
         # set loss functions and optimizers
         if self.isTrain:
@@ -75,8 +78,8 @@ class Pix2PixHDModel(BaseModel):
             self.loss_filter = self.init_loss_filter(not opt.no_ganFeat_loss, not opt.no_vgg_loss)
             self.criterionGAN = networks.GANLoss(use_lsgan=not opt.no_lsgan, tensor=self.Tensor)
             self.criterionFeat = torch.nn.L1Loss()
-            if not opt.no_vgg_loss:
-                self.criterionVGG = networks.VGGLoss(self.gpu_ids)
+            # if not opt.no_vgg_loss:
+            #     self.criterionVGG = networks.VGGLoss(self.gpu_ids)
 
             # Names so we can breakout loss
             self.loss_names = self.loss_filter('G_GAN', 'G_GAN_Feat', 'G_VGG', 'D_real', 'D_fake')
@@ -135,6 +138,7 @@ class Pix2PixHDModel(BaseModel):
         input_concat = rgb
         fake_hyper = self.netG.forward(input_concat)
 
+        # print("rgb {} fake_hyper {}".format(rgb.shape, fake_hyper.shape))
         # Fake Detection and Loss
         pred_fake_pool = self.discriminate(rgb, fake_hyper, use_pool=True)
         loss_D_fake = self.criterionGAN(pred_fake_pool, False)
@@ -159,8 +163,8 @@ class Pix2PixHDModel(BaseModel):
 
         # VGG feature matching loss
         loss_G_VGG = 0
-        if not self.opt.no_vgg_loss:
-            loss_G_VGG = self.criterionVGG(fake_hyper, real_hyper) * self.opt.lambda_feat
+        # if not self.opt.no_vgg_loss:
+        #     loss_G_VGG = self.criterionVGG(fake_hyper, real_hyper) * self.opt.lambda_feat
 
         # Only return the fake_B image if necessary to save BW
         return [self.loss_filter(loss_G_GAN, loss_G_GAN_Feat, loss_G_VGG, loss_D_real, loss_D_fake), None if not infer else fake_hyper]
@@ -269,7 +273,7 @@ class Pix2PixHDModel(BaseModel):
         self.old_lr = lr
 
 
-class InferenceModel(Pix2PixHDModel):
+class InferenceModel(SSRGAN):
     def forward(self, inp):
         label, inst = inp
         return self.inference(label, inst)

@@ -28,7 +28,7 @@ class AverageMeter(object):
 def initialize_logger(file_dir):
     logger = logging.getLogger()
     fhandler = logging.FileHandler(filename=file_dir, mode='a')
-    formatter = logging.Formatter('%(asctime)s - %(message)s',"%Y-%m-%d %H:%M:%S")
+    formatter = logging.Formatter('%(asctime)s - %(message)s', "%Y-%m-%d %H:%M:%S")
     fhandler.setFormatter(formatter)
     logger.addHandler(fhandler)
     logger.setLevel(logging.INFO)
@@ -42,7 +42,7 @@ def save_checkpoint(model_path, epoch, iteration, model, optimizer):
             'state_dict': model.state_dict(),
             'optimizer': optimizer.state_dict(),
             }
-    
+
     torch.save(state, os.path.join(model_path, 'net_%depoch.pth' % epoch))
 
 
@@ -50,10 +50,10 @@ def save_matv73(mat_name, var_name, var):
     hdf5storage.savemat(mat_name, {var_name: var}, format='7.3', store_python_metadata=True)
 
 
-def record_loss(loss_csv,epoch, iteration, epoch_time, lr, train_loss, test_loss):
+def record_loss(loss_csv, epoch, iteration, epoch_time, lr, train_loss, test_loss):
     """ Record many results."""
     loss_csv.write('{},{},{},{},{},{}\n'.format(epoch, iteration, epoch_time, lr, train_loss, test_loss))
-    loss_csv.flush()    
+    loss_csv.flush()
     loss_csv.close
 
 
@@ -110,4 +110,3 @@ class LossTrainCSS(nn.Module):
         error = torch.abs(outputs - label)
         mrae = torch.mean(error.view(-1))
         return mrae
-

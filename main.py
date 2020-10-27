@@ -7,63 +7,69 @@ from torch.utils.data import DataLoader
 from torch.autograd import Variable
 import os
 import time
-import random
+# import random
 from dataset import HyperDatasetValid, HyperDatasetTrain  # Clean Data set
 from models.models import create_model
 # from utils.util import AverageMeter, initialize_logger, save_checkpoint, record_loss, LossTrainCSS, Loss_valid
 from utils.visualizer import Visualizer
-from collections import OrderedDict
+# from collections import OrderedDict
+import numpy as np
 
 
-parser = argparse.ArgumentParser(description="SSR")
-parser.add_argument("--batchSize", type=int, default=32, help="batch size")
+parser = argparse.ArgumentParser(description="SSRGAN")
+parser.add_argument("--batchSize", type=int, default=1, help="input batch size")
 parser.add_argument("--end_epoch", type=int, default=100+1, help="number of epochs")
 parser.add_argument("--init_lr", type=float, default=1e-4, help="initial learning rate")
 parser.add_argument("--decay_power", type=float, default=1.5, help="decay power")
 parser.add_argument("--trade_off", type=float, default=10, help="trade_off")
 parser.add_argument("--max_iter", type=float, default=300000, help="max_iter")  # patch48:380x450/32x100-534375; patch96:82x450/32x100-113906
-parser.add_argument("--outf", type=str, default="CleanResults", help='path log files')
-# options from pix2pix
+parser.add_argument("--outf", type=str, default="SSRResults", help='path log files')
+# custom options
 parser.add_argument('--name', type=str, default='RGB2HSI', help='name of the experiment. It decides where to store samples and models')
-parser.add_argument('--gpu_ids', type=str, default='0,1', help='gpu ids: e.g. 0  0,1,2, 0,2. use -1 for CPU')
+parser.add_argument('--gpu_ids', type=str, default='0', help='gpu ids: e.g. 0  0,1,2, 0,2. use -1 for CPU')
 parser.add_argument('--isTrain', type=bool, default=True, help='isTrain')
 parser.add_argument('--checkpoints_dir', type=str, default='./checkpoints', help='models are saved here')
 parser.add_argument('--display_freq', type=int, default=5, help='frequency of showing training results on screen')
-parser.add_argument('--instance_feat', action='store_true', help='if specified, add encoded instance features as input')
-parser.add_argument('--label_feat', action='store_true', help='if specified, add encoded label features as input')  
-parser.add_argument('--load_features', action='store_true', help='if specified, load precomputed feature maps')
+parser.add_argument('--print_freq', type=int, default=100, help='frequency of showing training results on console')
+parser.add_argument('--verbose', action='store_true', default=False, help='toggles verbose')
 
-parser.add_argument('--batchSize', type=int, default=1, help='input batch size')
+parser.add_argument('--instance_feat', action='store_true', help='if specified, add encoded instance features as input')
+parser.add_argument('--label_feat', action='store_true', help='if specified, add encoded label features as input')
+parser.add_argument('--load_features', action='store_true', help='if specified, load precomputed feature maps')
+parser.add_argument('--niter', type=int, default=100, help='# of iter at starting learning rate')
+parser.add_argument('--niter_decay', type=int, default=100, help='# of iter to linearly decay learning rate to zero')
+parser.add_argument('--beta1', type=float, default=0.5, help='momentum term of adam')
+parser.add_argument('--lr', type=float, default=0.0002, help='initial learning rate for adam')
+parser.add_argument('--save_latest_freq', type=int, default=100, help='frequency of saving the latest results')
+parser.add_argument('--save_epoch_freq', type=int, default=1, help='frequency of saving checkpoints at the end of epochs')
 parser.add_argument('--loadSize', type=int, default=1024, help='scale images to this size')
 parser.add_argument('--fineSize', type=int, default=512, help='then crop to this size')
+parser.add_argument('--no_flip', action='store_true', help='if specified, do not flip the images for data argumentation')
 parser.add_argument('--label_nc', type=int, default=35, help='# of input label channels')
 parser.add_argument('--input_nc', type=int, default=3, help='# of input image channels')
-parser.add_argument('--output_nc', type=int, default=3, help='# of output image channels')
+parser.add_argument('--output_nc', type=int, default=31, help='# of output HSI channels')
 
-parser.add_argument('--no_instance', action='store_true', help='if specified, do *not* add instance map as input')        
-parser.add_argument('--instance_feat', action='store_true', help='if specified, add encoded instance features as input')
-parser.add_argument('--label_feat', action='store_true', help='if specified, add encoded label features as input')        
-parser.add_argument('--feat_num', type=int, default=3, help='vector length for encoded features')        
-parser.add_argument('--load_features', action='store_true', help='if specified, load precomputed feature maps')
-parser.add_argument('--n_downsample_E', type=int, default=4, help='# of downsampling layers in encoder') 
-parser.add_argument('--nef', type=int, default=16, help='# of encoder filters in the first conv layer')        
-parser.add_argument('--n_clusters', type=int, default=10, help='number of clusters for features')        
+parser.add_argument('--no_instance', action='store_true', help='if specified, do *not* add instance map as input')
+parser.add_argument('--feat_num', type=int, default=3, help='vector length for encoded features')
+parser.add_argument('--n_downsample_E', type=int, default=4, help='# of downsampling layers in encoder')
+parser.add_argument('--nef', type=int, default=16, help='# of encoder filters in the first conv layer')
+parser.add_argument('--n_clusters', type=int, default=10, help='number of clusters for features')
 
 parser.add_argument('--netG', type=str, default='global', help='selects model to use for netG')
 parser.add_argument('--ngf', type=int, default=64, help='# of gen filters in first conv layer')
-parser.add_argument('--n_downsample_global', type=int, default=4, help='number of downsampling layers in netG') 
+parser.add_argument('--n_downsample_global', type=int, default=4, help='number of downsampling layers in netG')
 parser.add_argument('--n_blocks_global', type=int, default=9, help='number of residual blocks in the global generator network')
 parser.add_argument('--n_blocks_local', type=int, default=3, help='number of residual blocks in the local enhancer network')
-parser.add_argument('--n_local_enhancers', type=int, default=1, help='number of local enhancers to use')        
-parser.add_argument('--niter_fix_global', type=int, default=0, help='number of epochs that we only train the outmost local enhancer')        
+parser.add_argument('--n_local_enhancers', type=int, default=1, help='number of local enhancers to use')
+parser.add_argument('--niter_fix_global', type=int, default=0, help='number of epochs that we only train the outmost local enhancer')
 parser.add_argument('--norm', type=str, default='instance', help='instance normalization or batch normalization')
 
 parser.add_argument('--num_D', type=int, default=2, help='number of discriminators to use')
 parser.add_argument('--n_layers_D', type=int, default=3, help='only used if which_model_netD==n_layers')
-parser.add_argument('--ndf', type=int, default=64, help='# of discrim filters in first conv layer')    
-parser.add_argument('--lambda_feat', type=float, default=10.0, help='weight for feature matching loss')                
+parser.add_argument('--ndf', type=int, default=64, help='# of discrim filters in first conv layer')
+parser.add_argument('--lambda_feat', type=float, default=10.0, help='weight for feature matching loss')
 parser.add_argument('--no_ganFeat_loss', action='store_true', help='if specified, do *not* use discriminator feature matching loss')
-parser.add_argument('--no_vgg_loss', action='store_true', help='if specified, do *not* use VGG feature matching loss')        
+parser.add_argument('--no_vgg_loss', action='store_true', help='if specified, do *not* use VGG feature matching loss')
 parser.add_argument('--no_lsgan', action='store_true', help='do *not* use least square GAN, if false, use vanilla GAN')
 parser.add_argument('--pool_size', type=int, default=0, help='the size of image buffer that stores previously generated images')
 
@@ -86,9 +92,9 @@ def main():
     # val_data = HyperDatasetValid(mode='valid')
     # print("Validation set samples: ", len(val_data))
     print("\nloading dataset ...")
-    train_data = HyperDatasetTrain(mode='train')
-    print("Train datasets: %d," % (len(train_data)))
-    val_data = HyperDatasetValid(mode='valid')
+    train_data = HyperDatasetTrain(mode='train', opt=opt)
+    print("Train datasets: %d " % (len(train_data)))
+    val_data = HyperDatasetValid(mode='valid', opt=opt)
     print("Validation set samples: ", len(val_data))
 
     # Data Loader (Input Pipeline)
@@ -106,7 +112,7 @@ def main():
     print("\nbuilding models_baseline ...")
     # model = AWAN(3, 31, 200, 8)
     model = create_model(opt)
-    print('Parameters number is ', sum(param.numel() for param in model.parameters()))
+    print('Parameters number is %.3f M' % (sum(param.numel() for param in model.parameters())/1e6))
     visualizer = Visualizer(opt)
 
     optimizer_G, optimizer_D = model.module.optimizer_G, model.module.optimizer_D
@@ -124,15 +130,18 @@ def main():
 
     # Parameters, Loss and Optimizer
     start_epoch = 1
+    epoch_iter = 0
     # iteration = 0
     # record_val_loss = 1000
     # optimizer = optim.Adam(model.parameters(), lr=opt.init_lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=0)
+    total_steps = (start_epoch-1) * len(train_data) + epoch_iter
 
     # visualzation
-    os.makedirs(opt.outf, exist_ok=True)
-    loss_csv = open(os.path.join(opt.outf, 'loss.csv'), 'a+')
-    log_dir = os.path.join(opt.outf, 'train.log')
-    logger = initialize_logger(log_dir)
+    # os.makedirs(opt.outf, exist_ok=True)
+    # loss_csv = open(os.path.join(opt.outf, 'loss.csv'), 'a+')
+    # log_dir = os.path.join(opt.outf, 'train.log')
+    # logger = initialize_logger(log_dir)
+    iter_path = os.path.join(opt.checkpoints_dir, opt.name, 'iter.txt')
 
     # # Resume
     # resume_file = opt.outf + '/net_9epoch.pth'
@@ -149,7 +158,7 @@ def main():
     # start epoch
     for epoch in range(start_epoch, opt.end_epoch):
         start_time = time.time()
-        train_loss, iteration, lr = train(train_loader, model, optimizer_G, optimizer_D, epoch, start_time, visualizer)
+        train_loss, iteration, lr = train(train_loader, model, optimizer_G, optimizer_D, epoch, total_steps, start_time, visualizer, iter_path)
         # val_loss = validate(val_loader, model, criterion_valid)
 
         # train_loss, iteration, lr = train(train_loader, model, criterion_train, optimizer, epoch, iteration, opt.init_lr, opt.decay_power, opt.trade_off)
@@ -171,12 +180,14 @@ def main():
 
 
 # Training
-def train(train_loader, model, optimizer_G, optimizer_D, epoch, start_time, visualizer):
-    random.shuffle(train_loader)
+def train(train_loader, model, optimizer_G, optimizer_D, epoch, total_steps, start_time, visualizer, iter_path):
+    # random.shuffle(train_loader)
     # whether to collect output images
     save_fake = True if opt.display_freq else False
 
     for i, (rgb, hyper) in enumerate(train_loader):
+        total_steps += 1
+        # print("rgb shape {} hyper {}: ".format(rgb.shape, hyper.shape))
         # Forward Pass
         losses, generated = model(Variable(rgb),
                                   Variable(hyper),
@@ -205,32 +216,32 @@ def train(train_loader, model, optimizer_G, optimizer_D, epoch, start_time, visu
         # print out errors
         if i % opt.display_freq == 0:
             errors = {k: v.data.item() if not isinstance(v, int) else v for k, v in loss_dict.items()}
-            t = (time.time() - start_time) / opt.print_freq
+            t = (time.time() - start_time) / opt.display_freq
             visualizer.print_current_errors(epoch, i, errors, t)
             # visualizer.plot_current_errors(errors, total_steps)
 
         # display output images
         if save_fake:
-            visuals = OrderedDict([('input_label', util.tensor2label(data['label'][0], opt.label_nc)),
-                                   ('synthesized_image', util.tensor2im(generated.data[0])),
-                                   ('real_image', util.tensor2im(data['image'][0]))])
-            visualizer.display_current_results(visuals, epoch, total_steps)
+            # visuals = OrderedDict([('input_label', util.tensor2label(data['label'][0], opt.label_nc)),
+            #                        ('synthesized_image', util.tensor2im(generated.data[0])),
+            #                        ('real_image', util.tensor2im(data['image'][0]))])
+            # visualizer.display_current_results(visuals, epoch, total_steps)
+            visualizer.display_samples(rgb, hyper, generated, epoch, total_steps)
 
         # save latest model
-        if total_steps % opt.save_latest_freq == save_delta:
+        if total_steps % opt.save_latest_freq == 0:
             print('saving the latest model (epoch %d, total_steps %d)' % (epoch, total_steps))
-            model.module.save('latest')            
-            np.savetxt(iter_path, (epoch, epoch_iter), delimiter=',', fmt='%d')
+            model.module.save('latest')
+            np.savetxt(iter_path, (epoch, i), delimiter=',', fmt='%d')
 
-        if epoch_iter >= dataset_size:
-            break
-    iter_end_time = time.time()
+        # if epoch_iter >= dataset_size:
+        #     break
     print('End of epoch %d / %d \t Time Taken: %d sec' %
-          (epoch, opt.niter + opt.niter_decay, time.time() - epoch_start_time))
+          (epoch, opt.end_epoch, time.time() - start_time))
 
     # save model for this epoch
     if epoch % opt.save_epoch_freq == 0:
-        print('saving the model at the end of epoch %d, iters %d' % (epoch, total_steps))        
+        print('saving the model at the end of epoch %d, iters %d' % (epoch, total_steps))
         model.module.save('latest')
         model.module.save(epoch)
         np.savetxt(iter_path, (epoch+1, 0), delimiter=',', fmt='%d')
@@ -244,21 +255,21 @@ def train(train_loader, model, optimizer_G, optimizer_D, epoch, start_time, visu
         model.module.update_learning_rate()
 
 
-# Validate
-def validate(val_loader, model, criterion):
-    model.eval()
-    for i, (input, target) in enumerate(val_loader):
-        input = input.cuda()
-        target = target.cuda()
+# # Validate
+# def validate(val_loader, model, criterion):
+#     model.eval()
+#     for i, (input, target) in enumerate(val_loader):
+#         input = input.cuda()
+#         target = target.cuda()
 
-        generated = model.inference(data['label'], data['inst'], data['image'])
-        visuals = OrderedDict([('input_label', util.tensor2label(data['label'][0], opt.label_nc)),
-                            ('synthesized_image', util.tensor2im(generated.data[0]))])
-        img_path = data['path']
-        print('process image... %s' % img_path)
-        visualizer.save_images(webpage, visuals, img_path)
+#         generated = model.inference(data['label'], data['inst'], data['image'])
+#         visuals = OrderedDict([('input_label', util.tensor2label(data['label'][0], opt.label_nc)),
+#                             ('synthesized_image', util.tensor2im(generated.data[0]))])
+#         img_path = data['path']
+#         print('process image... %s' % img_path)
+#         visualizer.save_images(webpage, visuals, img_path)
 
-    return losses.avg
+#     return losses.avg
 
 # # Training
 # def train(train_loader, model, criterion, optimizer, epoch, iteration, init_lr, decay_power, trade_off):
@@ -335,5 +346,17 @@ def validate(val_loader, model, criterion):
 
 if __name__ == '__main__':
     print(torch.__version__)
+    str_ids = opt.gpu_ids.split(',')
+    opt.gpu_ids = []
+    for str_id in str_ids:
+        id = int(str_id)
+        if id >= 0:
+            opt.gpu_ids.append(id)
+    # print("opt.gpu_ids: ", opt.gpu_ids)
+    # set gpu ids
+    if len(opt.gpu_ids) > 0:
+        torch.cuda.set_device(opt.gpu_ids[0])
+    # print("opt.gpu_ids: ", opt.gpu_ids)
+
     main()
     # print(torch.__version__)

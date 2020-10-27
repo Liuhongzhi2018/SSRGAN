@@ -1,6 +1,6 @@
 import os
 import os.path
-import h5py
+# import h5py
 # from scipy.io import loadmat
 import cv2
 import glob
@@ -10,7 +10,7 @@ import hdf5storage
 
 from scipy.io import loadmat
 
-parser = argparse.ArgumentParser(description="SpectralSR")
+parser = argparse.ArgumentParser(description="SSRGAN")
 parser.add_argument("--data_path", type=str, default='./NTIRE2020', help="data path")
 parser.add_argument("--patch_size", type=int, default=64, help="data patch size")
 parser.add_argument("--stride", type=int, default=32, help="data patch stride")
@@ -111,7 +111,7 @@ def process_data(mode):
             # hyper = np.transpose(hyper, [2, 0, 1])
             # hyper = np.transpose(hyper, [2, 1, 0])
             hyper = normalize(hyper, max_val=1., min_val=0.)
-            print('hyper:\n', hyper.shape)  # hyper:  HWC          
+            print('hyper:\n', hyper.shape)  # hyper:  HWC
             # load rgb image
             rgb = cv2.imread(filenames_rgb[k])  # imread -> BGR model
             rgb = cv2.cvtColor(rgb, cv2.COLOR_BGR2RGB)
