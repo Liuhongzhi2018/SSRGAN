@@ -36,7 +36,7 @@
 - Install PyTorch and dependencies from http://pytorch.org
 - Install python libraries [dominate](https://github.com/Knio/dominate).
 ```bash
-pip install dominate
+pip install dominate 
 ```
 - Clone this repo:
 ```bash
