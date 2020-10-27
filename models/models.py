@@ -6,7 +6,7 @@ def create_model(opt):
     model = SSRGAN()
     model.initialize(opt)
 
-    if len(opt.gpu_ids):
-        model = torch.nn.DataParallel(model, device_ids=opt.gpu_ids)
+    # if len(opt.gpu_ids):
+    #     model = torch.nn.DataParallel(model, device_ids=opt.gpu_ids)
 
     return model

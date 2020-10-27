@@ -2,7 +2,7 @@ import os
 import cv2 as cv
 import numpy as np
 from scipy.io import savemat
-
+# from PIL import Image
 
 JPG_QUALITY = 80
 PNG_COMPRESSION = 9  # Prioritize small file size over speed (lossless compression)
@@ -31,6 +31,7 @@ def imTo16bit(im):
     """
     assert im.min() >= 0, "Images must contain only non-negative values"
     return np.clip(im, 0, 1) * BIT_16
+
 
 def projectToRGB(hsIm, cameraResponse):
     """
@@ -63,7 +64,7 @@ def projectToRGBMosaic(hsIm, cameraResponse):
     return mosaicIm
 
 
-def addNoise(mosaicIm, darkNoise = 10, targetNpe = 5000):
+def addNoise(mosaicIm, darkNoise=10, targetNpe=5000):
     """
     Add noise to a RGGB mosaic image produced by `projectToRGBMosaic` and return a 16bit noisy camera mosaic.
     :param mosaicIm: Input RGGB mosaic (H x W)
@@ -77,21 +78,20 @@ def addNoise(mosaicIm, darkNoise = 10, targetNpe = 5000):
     """
     # Find the mean of green channel used to approximate scene luminance level
     meanOverGreenPixels = np.mean([mosaicIm[1::2, 0::2], mosaicIm[0::2, 1::2]])
-    
-    # Set the scaling functions to Number of Photo-Electrons and back to digital number 
-    AvgGreen2Npe = (targetNpe/ meanOverGreenPixels ) # input green Npe divided into 1nm bands
-    analogGain= 1/AvgGreen2Npe
 
+    # Set the scaling functions to Number of Photo-Electrons and back to digital number
+    AvgGreen2Npe = (targetNpe / meanOverGreenPixels)  # input green Npe divided into 1nm bands
+    analogGain = 1/AvgGreen2Npe
 
     # Scale the input image to target illumination levels. Result is in Npe units
-    rggb_Npe = mosaicIm * AvgGreen2Npe # Scaling average greens to the target Npe for Poisson
+    rggb_Npe = mosaicIm * AvgGreen2Npe  # Scaling average greens to the target Npe for Poisson
 
-    N_shot = np.random.poisson(rggb_Npe) # Randomize signal by poisson Shot noise model
-    N_dark = np.random.normal(0, np.power(darkNoise, 2), rggb_Npe.shape) # Add normal Gaussian dark noise
-    noisyRGGB = (N_shot + N_dark) # Total noisy signal
+    N_shot = np.random.poisson(rggb_Npe)  # Randomize signal by poisson Shot noise model
+    N_dark = np.random.normal(0, np.power(darkNoise, 2), rggb_Npe.shape)  # Add normal Gaussian dark noise
+    noisyRGGB = (N_shot + N_dark)  # Total noisy signal
 
     # Ppply gain to scale the image into the correct DN values and apply A2D function (round and Clip to A2D range)
-    digitizedRGGB = np.round(noisyRGGB*analogGain).clip(0,BIT_16) # Digitize signal, i.e., round and clip
+    digitizedRGGB = np.round(noisyRGGB*analogGain).clip(0, BIT_16)  # Digitize signal, i.e., round and clip
     return digitizedRGGB
 
 
@@ -138,12 +138,25 @@ def savePNG(im, path):
     return cv.imwrite(path, imBGR, [cv.IMWRITE_PNG_COMPRESSION, PNG_COMPRESSION])
 
 
+def toPNG(im):
+    """
+    Save RGB image as 8bit PNG.
+    :param im: RGB image in floating point format (H x W x 3).
+    :param path: full path to image file name
+    :return: True if successful
+    """
+    # reduce image to 8 bit color
+    im8 = imTo8bit(im).astype(np.uint8)
+    # imBGR = cv.cvtColor(im8, cv.COLOR_RGB2BGR)
+    return im8
+
+
 def saveReconstructedHSI(hsIm, path):
     """
     Save the reconstructed hyperspectral image into .mat file.
     :param hsIm: hyperspectral image (H x W x S).
     :param path: full output path to image file name
     """
-    
+
     # variable name = "cube"
     savemat(path, {"cube": hsIm})

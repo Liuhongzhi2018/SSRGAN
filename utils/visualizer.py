@@ -9,32 +9,20 @@ import scipy.misc
 # except ImportError:
 #     from io import BytesIO         # Python 3.x
 from io import BytesIO
-from .SpectralUtils import savePNG, projectToRGB
+# from .SpectralUtils import savePNG, projectToRGB, toPNG
+from .SpectralUtils import projectToRGB, toPNG
 import numpy as np
-from PIL import Image
+# from PIL import Image
+import cv2
 
 
 class Visualizer():
     def __init__(self, opt):
-        # self.opt = opt
-        # self.tf_log = opt.tf_log
-        # self.use_html = opt.isTrain and not opt.no_html
-        # self.win_size = opt.display_winsize
         self.name = opt.name
         self.savepath = os.path.join(opt.checkpoints_dir, opt.name, 'samples')
+        self.val_savepath = os.path.join(opt.checkpoints_dir, opt.name, 'validation')
         os.makedirs(self.savepath, exist_ok=True)
-
-        # if self.tf_log:
-        #     import tensorflow as tf
-        #     self.tf = tf
-        #     self.log_dir = os.path.join(opt.checkpoints_dir, opt.name, 'logs')
-        #     self.writer = tf.summary.FileWriter(self.log_dir)
-
-        # if self.use_html:
-        #     self.web_dir = os.path.join(opt.checkpoints_dir, opt.name, 'web')
-        #     self.img_dir = os.path.join(self.web_dir, 'images')
-        #     print('create web directory %s...' % self.web_dir)
-        #     util.mkdirs([self.web_dir, self.img_dir])
+        os.makedirs(self.val_savepath, exist_ok=True)
 
         self.log_name = os.path.join(opt.checkpoints_dir, opt.name, 'loss_log.txt')
         with open(self.log_name, "a") as log_file:
@@ -47,11 +35,6 @@ class Visualizer():
             # show images in tensorboard output
             img_summaries = []
             for label, image_numpy in visuals.items():
-                # # Write the image to a string
-                # try:
-                #     s = StringIO()
-                # except:
-                #     s = BytesIO()
                 s = BytesIO()
                 scipy.misc.toimage(image_numpy).save(s, format="jpeg")
                 # Create an Image object
@@ -142,47 +125,38 @@ class Visualizer():
         webpage.add_images(ims, txts, links, width=self.win_size)
 
     # save image and hsi sample
-    def display_samples(self, rgb, hyper, generated, epoch, total_steps):
+    def display_samples(self, rgb, hyper, generated, epoch, total_steps, i, mode):
         BIT_8 = 256
         filtersPath = "./cie_1964_w_gain.npz"
-        # savePath = "./output/"
 
         # Load HS image and filters
-        # cube = loadmat(filePath)['cube']
         filters = np.load(filtersPath)['filters']
 
         # Project HSI to RGB
         hyper_numpy = hyper.cpu().float().numpy().squeeze(0)
         hyper_numpy = np.transpose(hyper_numpy, (1, 2, 0))
         hyper_RGB = np.true_divide(projectToRGB(hyper_numpy, filters), BIT_8)
-        # print("hyper_RGB: ", hyper_RGB.min(), hyper_RGB.max())
-        hyper_path = os.path.join(self.savepath, 'hyper_' + str(epoch) + '_' + str(total_steps) + '.png')
-        savePNG(hyper_RGB, hyper_path)
+        hyper_RGB = toPNG(hyper_RGB)
 
         # Project generated to RGB
         generated_numpy = generated.detach().cpu().float().numpy().squeeze(0)
         generated_numpy = np.transpose(generated_numpy, (1, 2, 0))
         generated_RGB = np.true_divide(projectToRGB(generated_numpy, filters), BIT_8)
         generated_RGB = (generated_RGB - generated_RGB.min())/(generated_RGB.max()-generated_RGB.min())
-        # print("generated_RGB: ", generated_RGB)
-        # image_numpy = np.clip(image_numpy, 0, 255)
-        gen_path = os.path.join(self.savepath, 'gen_' + str(epoch) + '_' + str(total_steps) + '.png')
-        savePNG(generated_RGB, gen_path)
+        generated_RGB = toPNG(generated_RGB)
 
         # Save image file
-        # fileName = splitext(basename(filePath))[0]
         image_numpy = rgb.cpu().float().numpy().squeeze(0)
-        # image_numpy = (np.transpose(image_numpy, (1, 2, 0)) + 1) / 2.0 * 255.0
-        # image_numpy = np.clip(image_numpy, 0, 255)
-        # print("image_numpy: ", image_numpy)
-        # image_numpy = np.transpose(image_numpy, (1, 2, 0))
         image_numpy = (image_numpy - image_numpy.min())/(image_numpy.max()-image_numpy.min())
         image_numpy = (np.transpose(image_numpy, (1, 2, 0)) + 1) / 2.0 * 255.0
-        path = os.path.join(self.savepath, 'RGBin_' + str(epoch) + '_' + str(total_steps) + '.png')
-        # savePNG(image_numpy, path)
-        img = Image.fromarray(np.uint8(image_numpy))
-        img.save(path)
+        img = np.uint8(image_numpy)
 
-        # # Display RGB image
-        # img = cv.imread(path)
-        # img = cv.cvtColor(img, cv.COLOR_BGR2RGB)
+        sample = self.joint_img_horizontal(img, hyper_RGB, generated_RGB)
+        if mode:
+            cv2.imwrite(os.path.join(self.savepath, "RGB2HSI_%d_%d.png" % (epoch, total_steps)), sample)
+        else:
+            cv2.imwrite(os.path.join(self.val_savepath, "val_RGB2HSI_%d_%d.png" % (epoch, i)), sample)
+
+    def joint_img_horizontal(self, rgb, real_hyper, hyper):
+        img = np.concatenate((rgb, real_hyper, hyper), axis=1)
+        return img

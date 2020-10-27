@@ -20,24 +20,14 @@ class SSRGAN(BaseModel):
 
     def initialize(self, opt):
         BaseModel.initialize(self, opt)
-        # if opt.resize_or_crop != 'none' or not opt.isTrain: # when training at full res this causes OOM
-        #     torch.backends.cudnn.benchmark = True
         self.isTrain = opt.isTrain
         self.use_features = opt.instance_feat or opt.label_feat
         self.gen_features = self.use_features and not self.opt.load_features
-        # input_nc = opt.label_nc if opt.label_nc != 0 else opt.input_nc
         input_nc = opt.input_nc
-        # print("self.gpu_ids: ", self.gpu_ids)
 
         # define networks
         # Generator network
         netG_input_nc = input_nc
-        # print("netG_input_nc: ", netG_input_nc)
-        # if not opt.no_instance:
-        #     netG_input_nc += 1
-        # if self.use_features:
-        #     netG_input_nc += opt.feat_num
-        # print("netG_input_nc: ", netG_input_nc)  # channel=3
         self.netG = networks.define_G(netG_input_nc, opt.output_nc, opt.ngf, opt.netG,
                                       opt.n_downsample_global, opt.n_blocks_global, opt.n_local_enhancers,
                                       opt.n_blocks_local, opt.norm, gpu_ids=self.gpu_ids)
@@ -46,8 +36,6 @@ class SSRGAN(BaseModel):
         if self.isTrain:
             use_sigmoid = opt.no_lsgan
             netD_input_nc = input_nc + opt.output_nc
-            # if not opt.no_instance:
-            #     netD_input_nc += 1
             self.netD = networks.define_D(netD_input_nc, opt.ndf, opt.n_layers_D, opt.norm, use_sigmoid,
                                           opt.num_D, not opt.no_ganFeat_loss, gpu_ids=self.gpu_ids)
 
@@ -58,15 +46,7 @@ class SSRGAN(BaseModel):
         if self.opt.verbose:
             print('---------- Networks initialized -------------')
 
-        # # load networks
-        # if not self.isTrain or opt.continue_train or opt.load_pretrain:
-        #     pretrained_path = '' if not self.isTrain else opt.load_pretrain
-        #     self.load_network(self.netG, 'G', opt.which_epoch, pretrained_path)
-        #     if self.isTrain:
-        #         self.load_network(self.netD, 'D', opt.which_epoch, pretrained_path)
-        #     if self.gen_features:
-        #         self.load_network(self.netE, 'E', opt.which_epoch, pretrained_path)
-
+        # load networks
         # set loss functions and optimizers
         if self.isTrain:
             if opt.pool_size > 0 and (len(self.gpu_ids)) > 1:
@@ -78,8 +58,6 @@ class SSRGAN(BaseModel):
             self.loss_filter = self.init_loss_filter(not opt.no_ganFeat_loss, not opt.no_vgg_loss)
             self.criterionGAN = networks.GANLoss(use_lsgan=not opt.no_lsgan, tensor=self.Tensor)
             self.criterionFeat = torch.nn.L1Loss()
-            # if not opt.no_vgg_loss:
-            #     self.criterionVGG = networks.VGGLoss(self.gpu_ids)
 
             # Names so we can breakout loss
             self.loss_names = self.loss_filter('G_GAN', 'G_GAN_Feat', 'G_VGG', 'D_real', 'D_fake')
@@ -138,7 +116,6 @@ class SSRGAN(BaseModel):
         input_concat = rgb
         fake_hyper = self.netG.forward(input_concat)
 
-        # print("rgb {} fake_hyper {}".format(rgb.shape, fake_hyper.shape))
         # Fake Detection and Loss
         pred_fake_pool = self.discriminate(rgb, fake_hyper, use_pool=True)
         loss_D_fake = self.criterionGAN(pred_fake_pool, False)
@@ -163,35 +140,20 @@ class SSRGAN(BaseModel):
 
         # VGG feature matching loss
         loss_G_VGG = 0
-        # if not self.opt.no_vgg_loss:
-        #     loss_G_VGG = self.criterionVGG(fake_hyper, real_hyper) * self.opt.lambda_feat
 
         # Only return the fake_B image if necessary to save BW
         return [self.loss_filter(loss_G_GAN, loss_G_GAN_Feat, loss_G_VGG, loss_D_real, loss_D_fake), None if not infer else fake_hyper]
 
-    def inference(self, label, inst, image=None):
+    def inference(self, rgb, hyper, image=None):
         # Encode Inputs
-        image = Variable(image) if image is not None else None
-        input_label, inst_map, real_image, _ = self.encode_input(Variable(label), Variable(inst), image, infer=True)
+        rgb, real_hyper = self.encode_input(Variable(rgb), Variable(hyper), infer=True)
 
         # Fake Generation
-        if self.use_features:
-            if self.opt.use_encoded_image:
-                # encode the real image to get feature map
-                feat_map = self.netE.forward(real_image, inst_map)
-            else:
-                # sample clusters from precomputed features
-                feat_map = self.sample_features(inst_map)
-            input_concat = torch.cat((input_label, feat_map), dim=1)
-        else:
-            input_concat = input_label
+        input_concat = rgb
 
-        if torch.__version__.startswith('0.4'):
-            with torch.no_grad():
-                fake_image = self.netG.forward(input_concat)
-        else:
-            fake_image = self.netG.forward(input_concat)
-        return fake_image
+        with torch.no_grad():
+            fake_hyper = self.netG.forward(input_concat)
+        return fake_hyper
 
     def sample_features(self, inst):
         # read precomputed feature clusters

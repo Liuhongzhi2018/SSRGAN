@@ -44,14 +44,14 @@ git clone https://github.com/Liuhongzhi2018/SSRGAN.git
 cd SSRGAN
 ```
 
-## Train the model
+## Train and validate the model
 - If you are running the code for the first time, remember to run data pre-processing firstly.
 
     python data_preprocess.py  
     
 - Otherwise, run training directly.
 
-    python main.py  
+    python main.py
     
 ## Test the model
 
