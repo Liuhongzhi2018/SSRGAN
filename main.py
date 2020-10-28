@@ -80,7 +80,7 @@ parser.add_argument('--pool_size', type=int, default=0, help='the size of image 
 opt = parser.parse_args()
 
 os.environ["CUDA_DEVICE_ORDER"] = 'PCI_BUS_ID'
-os.environ["CUDA_VISIBLE_DEVICES"] = opt.gpu_ids
+# os.environ["CUDA_VISIBLE_DEVICES"] = opt.gpu_ids
 
 torch.manual_seed(opt.SEED)
 torch.cuda.manual_seed(opt.SEED)

@@ -51,7 +51,7 @@ cd SSRGAN
     
 - Otherwise, run training directly.
 
-    python main.py
+    python main.py --gpu_ids=1
     
 ## Test the model
 
