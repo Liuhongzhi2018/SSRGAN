@@ -51,7 +51,7 @@ cd SSRGAN
     
 - Otherwise, run training directly.
 
-    python main.py --gpu_ids=1
+    python main.py --gpu_ids=1 --name RGB2HSI_1028
     
 ## Test the model
 
