@@ -8,11 +8,12 @@ from torch.autograd import Variable
 import os
 import time
 import random
-from dataset import HyperDatasetValid, HyperDatasetTrain  # Clean Data set
+from utils.dataset import HyperDatasetValid, HyperDatasetTrain  # Clean Data set
 from models.models import create_model
 # from utils.util import AverageMeter, initialize_logger, save_checkpoint, record_loss, LossTrainCSS, Loss_valid
 from utils.visualizer import Visualizer
 from utils.util import initialize_logger
+from utils.EvalMetrics import computeMRAE
 # from collections import OrderedDict
 import numpy as np
 from skimage.measure import compare_ssim
@@ -48,7 +49,7 @@ parser.add_argument('--save_latest_freq', type=int, default=300, help='frequency
 parser.add_argument('--save_epoch_freq', type=int, default=1, help='frequency of saving checkpoints at the end of epochs')
 parser.add_argument('--loadSize', type=int, default=1024, help='scale images to this size')
 parser.add_argument('--fineSize', type=int, default=512, help='then crop to this size')
-parser.add_argument('--no_flip', action='store_true', help='if specified, do not flip the images for data argumentation')
+parser.add_argument('--no_flip', action='store_true', default=False, help='if specified, do not flip the images for data argumentation')
 parser.add_argument('--label_nc', type=int, default=35, help='# of input label channels')
 parser.add_argument('--input_nc', type=int, default=3, help='# of input image channels')
 parser.add_argument('--output_nc', type=int, default=31, help='# of output HSI channels')
@@ -114,6 +115,7 @@ def main():
     epoch_iter = 0
     # iteration = 0
     total_steps = (start_epoch-1) * len(train_data) + epoch_iter
+    max_PSNR, max_epoch = 0, 0
 
     # visualzation
     os.makedirs(opt.outf, exist_ok=True)
@@ -137,24 +139,27 @@ def main():
     # start epoch
     for epoch in range(start_epoch, opt.end_epoch):
         start_time = time.time()
-        train_PSNR, train_SSIM, train_model = train(train_loader, model, optimizer_G, optimizer_D, epoch, total_steps, start_time, visualizer, iter_path)
-        print("--- Start Validation ---")
-        val_model = train_model
-        val_PSNR, val_SSIM = validate(val_loader, val_model, epoch, total_steps, visualizer)
+        train_PSNR, train_SSIM, val_PSNR, val_SSIM, val_MRAE, max_PSNR, max_epoch = train(train_loader, val_loader, model,
+                                                                                          optimizer_G, optimizer_D, epoch,
+                                                                                          total_steps, start_time, visualizer,
+                                                                                          iter_path, max_PSNR, max_epoch)
         end_time = time.time()
         epoch_time = end_time - start_time
-        logger.info(" Epoch [%02d], Time:%.9f, Train PSNR: %.3f Val PSNR: %.3f "
-                    % (epoch, epoch_time, train_PSNR, val_PSNR))
+        logger.info(" Epoch [%02d], Time:%.9f, Train PSNR: %.4f Train SSIM: %.4f Val PSNR: %.4f Val SSIM: %.4f Val MRAE: %.4f"
+                    % (epoch, epoch_time, train_PSNR, train_SSIM, val_PSNR, val_SSIM, val_MRAE))
 
 
 # Training
-def train(train_loader, model, optimizer_G, optimizer_D, epoch, total_steps, start_time, visualizer, iter_path):
+def train(train_loader, val_loader, model, optimizer_G, optimizer_D, epoch, total_steps, start_time, visualizer, iter_path, max_PSNR, max_epoch):
     save_fake = True if opt.display_freq else False
     psnr_list = []
     ssim_list = []
-
+    mrae_list = []
     for i, (rgb, hyper) in enumerate(train_loader):
         total_steps += 1
+        # print("rgb shape {} hyper shape {}".format(rgb.shape, hyper.shape))
+        # rgb shape torch.Size([1, 3, 482, 512]) hyper shape torch.Size([1, 31, 482, 512])
+
         # Forward Pass
         losses, generated = model(Variable(rgb),
                                   Variable(hyper),
@@ -180,9 +185,10 @@ def train(train_loader, model, optimizer_G, optimizer_D, epoch, total_steps, sta
         optimizer_D.step()
 
         # Display results and errors #
-        psnr, ssim, l1 = metrics(generated.cuda(), hyper.cuda())
+        psnr, ssim, l1, mrae = metrics(generated.cuda(), hyper.cuda())
         psnr_list.append(psnr.item())
         ssim_list.append(ssim.item())
+        mrae_list.append(mrae.item())
         # print out errors
         if i % opt.display_freq == 0:
             errors = {k: v.data.item() if not isinstance(v, int) else v for k, v in loss_dict.items()}
@@ -194,23 +200,31 @@ def train(train_loader, model, optimizer_G, optimizer_D, epoch, total_steps, sta
         if save_fake and i % opt.display_freq == 0:
             visualizer.display_samples(rgb, hyper, generated, epoch, total_steps, i, mode=True)
 
-        # save latest model
-        if total_steps % opt.save_latest_freq == 0:
-            print('saving the latest model (epoch %d, total_steps %d)' % (epoch, total_steps))
-            model.save('latest')
-            np.savetxt(iter_path, (epoch, i), delimiter=',', fmt='%d')
+        # # save latest model
+        # if total_steps % opt.save_latest_freq == 0:
+        #     print('saving the latest model (epoch %d, total_steps %d)' % (epoch, total_steps))
+        #     model.save('latest')
+        #     np.savetxt(iter_path, (epoch, i), delimiter=',', fmt='%d')
 
     avg_psnr = np.average(psnr_list)
     avg_ssim = np.average(ssim_list)
-    print('End of epoch %d / %d \t PSNR %.2f SSIM %.2f Time Taken: %d sec' %
-          (epoch, opt.end_epoch, avg_psnr, avg_ssim, time.time() - start_time))
+    avg_mrae = np.average(mrae_list)
+    print('End of epoch %d / %d \t PSNR %.4f SSIM %.4f MARE %.4f Time Taken: %d sec' %
+          (epoch, opt.end_epoch, avg_psnr, avg_ssim, avg_mrae, time.time() - start_time))
+
+    print("--- Start Validation ---")
+    val_PSNR, val_SSIM, val_MRAE = validate(val_loader, model, epoch, total_steps, visualizer)
 
     # save model for this epoch
-    if epoch % opt.save_epoch_freq == 0:
-        print('saving the model at the end of epoch %d, iters %d' % (epoch, total_steps))
-        model.save('latest')
+    if epoch % opt.save_epoch_freq == 0 and val_PSNR > max_PSNR:
+        max_PSNR = val_PSNR
+        max_epoch = epoch
+        print('Saving the model at the end of epoch %d, iters %d' % (epoch, total_steps))
         model.save(epoch)
         np.savetxt(iter_path, (epoch+1, 0), delimiter=',', fmt='%d')
+    model.save('latest')
+
+    print('The best epoch is %d when max_PSNR is %.4f' % (max_epoch, max_PSNR))
 
     # instead of only training the local enhancer, train the entire network after certain iterations
     if (opt.niter_fix_global != 0) and (epoch == opt.niter_fix_global):
@@ -220,7 +234,7 @@ def train(train_loader, model, optimizer_G, optimizer_D, epoch, total_steps, sta
     if epoch > opt.niter:
         model.update_learning_rate()
 
-    return avg_psnr, avg_ssim, model
+    return avg_psnr, avg_ssim, val_PSNR, val_SSIM, val_MRAE, max_PSNR, max_epoch
 
 
 # Validate
@@ -228,19 +242,22 @@ def validate(val_loader, model, epoch, total_steps, visualizer):
     start_time = time.time()
     psnr_list = []
     ssim_list = []
+    mrae_list = []
     for i, (rgb, hyper) in enumerate(val_loader):
         generated = model.inference(Variable(rgb), Variable(hyper))
         visualizer.display_samples(rgb, hyper, generated, epoch, total_steps, i, mode=False)
-        psnr, ssim, l1 = metrics(generated.cuda(), hyper.cuda())
+        psnr, ssim, l1, mrae = metrics(generated.cuda(), hyper.cuda())
         psnr_list.append(psnr.item())
         ssim_list.append(ssim.item())
+        mrae_list.append(mrae.item())
 
     avg_psnr = np.average(psnr_list)
     avg_ssim = np.average(ssim_list)
-    print('Epoch %d \t Validation PSNR %.2f SSIM %.2f Time Taken: %d sec' %
-          (epoch, avg_psnr, avg_ssim, time.time() - start_time))
+    avg_mrae = np.average(mrae_list)
+    print('Epoch %d \t Validation PSNR %.4f SSIM %.4f MRAE %.4f Time Taken: %d sec' %
+          (epoch, avg_psnr, avg_ssim, avg_mrae, time.time() - start_time))
 
-    return avg_psnr, avg_ssim
+    return avg_psnr, avg_ssim, avg_mrae
 
 
 def metrics(inputs, gts):
@@ -262,7 +279,9 @@ def metrics(inputs, gts):
     inputs = inputs.view(b*n, w, h).cpu().numpy().astype(np.float32).transpose(1, 2, 0)
     gts = gts.view(b*n, w, h).cpu().numpy().astype(np.float32).transpose(1, 2, 0)
     ssim_value = compare_ssim(inputs, gts, data_range=1, win_size=51, multichannel=True)
-    return psnr_value, ssim_value, l1_value
+    mrae = computeMRAE(inputs, gts)
+
+    return psnr_value, ssim_value, l1_value, mrae
 
 
 if __name__ == '__main__':

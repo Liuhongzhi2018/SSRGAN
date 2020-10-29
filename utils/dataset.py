@@ -56,6 +56,7 @@ class HyperDatasetValid(udata.Dataset):
 
         self.keys = data_names
         self.keys.sort()
+        self.opt = opt
 
     def __len__(self):
         return len(self.keys)
@@ -64,14 +65,29 @@ class HyperDatasetValid(udata.Dataset):
         mat = h5py.File(self.keys[index], 'r')
         hyper = np.float32(np.array(mat['cube']))
         # hyper = np.float32(np.array(mat['rad']))
-        hyper = np.transpose(hyper, [0, 2, 1])
-        hyper = torch.Tensor(hyper)
+        hyper = np.transpose(hyper, [2, 1, 0])
+        transform_hyper = self.get_transform(cur=1, opt=self.opt)
+        hyper = transform_hyper(hyper)
 
         rgb = np.float32(np.array(mat['rgb']))
-        rgb = np.transpose(rgb, [0, 2, 1])
-        rgb = torch.Tensor(rgb)
+        rgb = np.transpose(rgb, [2, 1, 0])
+        transform_rgb = self.get_transform(cur=2, opt=self.opt)
+        rgb = transform_rgb(rgb)
+
         mat.close()
         return rgb, hyper
+
+    def get_transform(self, cur, opt, params=None, method=Image.BICUBIC, normalize=True):
+        transform_list = []
+        transform_list += [transforms.ToTensor()]
+
+        if normalize:
+            mt = [0.5] * opt.output_nc if cur == 1 else [0.5] * opt.input_nc
+            mtp = tuple(mt)
+            # print("mtp: ", mtp)
+            transform_list += [transforms.Normalize(mtp, mtp)]
+
+        return transforms.Compose(transform_list)
 
 
 class HyperDatasetTrain(udata.Dataset):
@@ -94,26 +110,24 @@ class HyperDatasetTrain(udata.Dataset):
     def __getitem__(self, index):
         mat = h5py.File(self.keys[index], 'r')
         # hyper = np.float32(np.array(mat['rad']))
-        hyper = np.float32(np.array(mat['cube']))  # (31, 512, 482)  CWH
-        hyper = np.transpose(hyper, [0, 2, 1])
-        hyper = torch.Tensor(hyper)
-        # transform_hyper = self.get_transform(self.opt)
-        # hyper = transform_hyper(hyper)
-        # hyper = F.interpolate(hyper, size=[self.opt.loadSize, self.opt.loadSize], mode='bilinear', align_corners=True)
+        hyper = np.float32(np.array(mat['cube']))  # (482, 512, 31)  CWH
+        hyper = np.transpose(hyper, [2, 1, 0])
+        # print("hyper shape: {}".format(hyper.shape))
+        transform_hyper = self.get_transform(cur=1, opt=self.opt)
+        hyper = transform_hyper(hyper)
 
-        rgb = np.float32(np.array(mat['rgb']))     # (3, 512, 482)   CWH
-        rgb = np.transpose(rgb, [0, 2, 1])
-        # transform_rgb = self.get_transform(self.opt)
-        rgb = torch.Tensor(rgb)
-        # rgb = transform_rgb(rgb)
-        # rgb = F.interpolate(rgb, size=[self.opt.loadSize, self.opt.loadSize], mode='bilinear', align_corners=True)
+        rgb = np.float32(np.array(mat['rgb']))     # (482, 512, 3)   CWH
+        rgb = np.transpose(rgb, [2, 1, 0])
+        # print("RGB shape: {}".format(rgb.shape))
+        transform_rgb = self.get_transform(cur=2, opt=self.opt)
+        rgb = transform_rgb(rgb)
 
         mat.close()
         # print("RGB shape: {} hyper shape: {}".format(rgb.shape, hyper.shape))
         # RGB shape: torch.Size([3, 482, 512]) hyper shape: torch.Size([31, 482, 512])
         return rgb, hyper
 
-    def get_transform(self, opt, params=None, method=Image.BICUBIC, normalize=True):
+    def get_transform(self, cur, opt, params=None, method=Image.BICUBIC, normalize=True):
         transform_list = []
         # if 'resize' in opt.resize_or_crop:
         #     osize = [opt.loadSize, opt.loadSize]
@@ -132,12 +146,18 @@ class HyperDatasetTrain(udata.Dataset):
         #     transform_list.append(transforms.Lambda(lambda img: __make_power_2(img, base, method)))
 
         # if opt.isTrain and not opt.no_flip:
-        #     transform_list.append(transforms.Lambda(lambda img: __flip(img, params['flip'])))
+        #     transform_list.append(transforms.RandomHorizontalFlip())
 
-        # transform_list += [transforms.ToTensor()]
+        transform_list += [transforms.ToTensor()]
 
-        # if normalize:
-        #     transform_list += [transforms.Normalize((0.5, 0.5, 0.5),
-        #                                             (0.5, 0.5, 0.5))]
+        if normalize:
+            mt = []
+            if cur == 1:
+                mt = [0.5] * opt.output_nc
+            elif cur == 2:
+                mt = [0.5] * opt.input_nc
+            mtp = tuple(mt)
+            # print("mtp: ", mtp)
+            transform_list += [transforms.Normalize(mtp, mtp)]
 
         return transforms.Compose(transform_list)

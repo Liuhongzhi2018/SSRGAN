@@ -135,20 +135,26 @@ class Visualizer():
         # Project HSI to RGB
         hyper_numpy = hyper.cpu().float().numpy().squeeze(0)
         hyper_numpy = np.transpose(hyper_numpy, (1, 2, 0))
+        hyper_numpy = (hyper_numpy - hyper_numpy.min())/(hyper_numpy.max()-hyper_numpy.min())
         hyper_RGB = np.true_divide(projectToRGB(hyper_numpy, filters), BIT_8)
         hyper_RGB = toPNG(hyper_RGB)
 
         # Project generated to RGB
         generated_numpy = generated.detach().cpu().float().numpy().squeeze(0)
         generated_numpy = np.transpose(generated_numpy, (1, 2, 0))
+        generated_numpy = (generated_numpy - generated_numpy.min())/(generated_numpy.max()-generated_numpy.min())
         generated_RGB = np.true_divide(projectToRGB(generated_numpy, filters), BIT_8)
-        generated_RGB = (generated_RGB - generated_RGB.min())/(generated_RGB.max()-generated_RGB.min())
+        # generated_RGB = (generated_RGB - generated_RGB.min())/(generated_RGB.max()-generated_RGB.min())
         generated_RGB = toPNG(generated_RGB)
 
         # Save image file
         image_numpy = rgb.cpu().float().numpy().squeeze(0)
+        # print("out image_numpy max {} min {}".format(image_numpy.max(), image_numpy.min()))
         image_numpy = (image_numpy - image_numpy.min())/(image_numpy.max()-image_numpy.min())
-        image_numpy = (np.transpose(image_numpy, (1, 2, 0)) + 1) / 2.0 * 255.0
+        # print("norm image_numpy max {} min {}".format(image_numpy.max(), image_numpy.min()))
+        # image_numpy = (np.transpose(image_numpy, (1, 2, 0)) + 1) / 2.0 * 255.0
+        image_numpy = np.transpose(image_numpy, (1, 2, 0)) * 255.0
+        # print("255 image_numpy max {} min {}".format(image_numpy.max(), image_numpy.min()))
         img = np.uint8(image_numpy)
 
         sample = self.joint_img_horizontal(img, hyper_RGB, generated_RGB)
