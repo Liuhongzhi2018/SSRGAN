@@ -46,13 +46,14 @@ cd SSRGAN
 
 ## Train and validate the model
 - If you are running the code for the first time, remember to run data pre-processing firstly.
-
-    python data_preprocess.py  
-    
+```bash
+python data_preprocess.py --mode train
+python data_preprocess.py --mode val
+```    
 - Otherwise, run training directly.
-
-    python main.py --gpu_ids=1 --name RGB2HSI_1028
-    
+```bash
+python main.py --gpu_ids=1 --name RGB2HSI_1028
+``` 
 ## Test the model
 
 To be continued
