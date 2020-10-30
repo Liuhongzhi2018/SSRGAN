@@ -54,6 +54,12 @@ python data_preprocess.py --mode val
 ```bash
 python main.py --gpu_ids=1 --name RGB2HSI_1028
 ``` 
+## Continue to train the model
+- If you want to fine the pretrained model
+```
+python main.py --gpu_ids=1 --name RGB2HSI_1028 --continue_train
+```
+
 ## Test the model
 
 To be continued
