@@ -34,6 +34,8 @@ parser.add_argument('--name', type=str, default='RGB2HSI', help='name of the exp
 parser.add_argument('--gpu_ids', type=str, default='0', help='gpu ids: e.g. 0  0,1,2, 0,2. use -1 for CPU')
 parser.add_argument('--isTrain', type=bool, default=True, help='isTrain')
 parser.add_argument('--checkpoints_dir', type=str, default='./checkpoints', help='models are saved here')
+parser.add_argument('--continue_train', action='store_true', help='continue training: load the latest model')
+parser.add_argument('--load_pretrain', type=str, default='', help='load the pretrained model from the specified location')
 parser.add_argument('--display_freq', type=int, default=5, help='frequency of showing training results on screen')
 parser.add_argument('--print_freq', type=int, default=100, help='frequency of showing training results on console')
 parser.add_argument('--verbose', action='store_true', default=False, help='toggles verbose')
@@ -279,7 +281,12 @@ def metrics(inputs, gts):
     inputs = inputs.view(b*n, w, h).cpu().numpy().astype(np.float32).transpose(1, 2, 0)
     gts = gts.view(b*n, w, h).cpu().numpy().astype(np.float32).transpose(1, 2, 0)
     ssim_value = compare_ssim(inputs, gts, data_range=1, win_size=51, multichannel=True)
-    mrae = computeMRAE(inputs, gts)
+    # print("inputs value: ", inputs.max(), inputs.min(), "gts value: ", gts.max(), gts.min())
+    norm_inputs = (inputs - inputs.min()) / (inputs.max() - inputs.min())
+    norm_gts = (gts - gts.min()) / (gts.max() - gts.min())
+    # print("norm_gts value: ", norm_inputs.max(), norm_inputs.min(), "norm_gts value: ", norm_gts.max(), norm_gts.min())
+    # print("norm_gts value: ", norm_inputs, "norm_gts value: ", norm_gts)
+    mrae = computeMRAE(norm_inputs, norm_gts)
 
     return psnr_value, ssim_value, l1_value, mrae
 

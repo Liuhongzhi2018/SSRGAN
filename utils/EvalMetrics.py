@@ -12,7 +12,10 @@ def computeMRAE(groundTruth, recovered):
 
     assert groundTruth.shape == recovered.shape,  "Size not match for groundtruth and recovered spectral images"
 
-    difference = np.abs(groundTruth - recovered) / groundTruth
+    # difference = np.abs(groundTruth - recovered) / groundTruth
+    # print("groundTruth value: ", groundTruth.max(), groundTruth.min(), "recovered value: ", recovered.max(), recovered.min())
+    epison = 1e-6
+    difference = np.abs(groundTruth - recovered) / (groundTruth + epison)
     mrae = np.mean(difference)
 
     return mrae
