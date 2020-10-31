@@ -14,6 +14,10 @@ def normalize():
     return transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
 
 
+def norm(data, max_val, min_val):
+    return (data-min_val)/(max_val-min_val)
+
+
 def __make_power_2(img, base, method=Image.BICUBIC):
     ow, oh = img.size
     h = int(round(oh / base) * base)
@@ -81,11 +85,11 @@ class HyperDatasetValid(udata.Dataset):
         transform_list = []
         transform_list += [transforms.ToTensor()]
 
-        if normalize:
-            mt = [0.5] * opt.output_nc if cur == 1 else [0.5] * opt.input_nc
-            mtp = tuple(mt)
-            # print("mtp: ", mtp)
-            transform_list += [transforms.Normalize(mtp, mtp)]
+        # if normalize:
+        #     mt = [0.5] * opt.output_nc if cur == 1 else [0.5] * opt.input_nc
+        #     mtp = tuple(mt)
+        #     # print("mtp: ", mtp)
+        #     transform_list += [transforms.Normalize(mtp, mtp)]
 
         return transforms.Compose(transform_list)
 
@@ -113,12 +117,16 @@ class HyperDatasetTrain(udata.Dataset):
         hyper = np.float32(np.array(mat['cube']))  # (482, 512, 31)  CWH
         hyper = np.transpose(hyper, [2, 1, 0])
         # print("hyper shape: {}".format(hyper.shape))
+        # print("hyper max {} hyper min {}".format(hyper.max(), hyper.min()))
+        # hyper max 1.0 hyper min 0.004312408156692982
         transform_hyper = self.get_transform(cur=1, opt=self.opt)
         hyper = transform_hyper(hyper)
 
         rgb = np.float32(np.array(mat['rgb']))     # (482, 512, 3)   CWH
         rgb = np.transpose(rgb, [2, 1, 0])
         # print("RGB shape: {}".format(rgb.shape))
+        # print("rgb max {} rgb min {}".format(rgb.max(), rgb.min()))
+        # rgb max 227.0 rgb min 1.0
         transform_rgb = self.get_transform(cur=2, opt=self.opt)
         rgb = transform_rgb(rgb)
 
@@ -150,14 +158,14 @@ class HyperDatasetTrain(udata.Dataset):
 
         transform_list += [transforms.ToTensor()]
 
-        if normalize:
-            mt = []
-            if cur == 1:
-                mt = [0.5] * opt.output_nc
-            elif cur == 2:
-                mt = [0.5] * opt.input_nc
-            mtp = tuple(mt)
-            # print("mtp: ", mtp)
-            transform_list += [transforms.Normalize(mtp, mtp)]
+        # if normalize:
+        #     mt = []
+        #     if cur == 1:
+        #         mt = [0.5] * opt.output_nc
+        #     elif cur == 2:
+        #         mt = [0.5] * opt.input_nc
+        #     mtp = tuple(mt)
+        #     # print("mtp: ", mtp)
+        #     transform_list += [transforms.Normalize(mtp, mtp)]
 
         return transforms.Compose(transform_list)

@@ -161,6 +161,8 @@ def train(train_loader, val_loader, model, optimizer_G, optimizer_D, epoch, tota
         total_steps += 1
         # print("rgb shape {} hyper shape {}".format(rgb.shape, hyper.shape))
         # rgb shape torch.Size([1, 3, 482, 512]) hyper shape torch.Size([1, 31, 482, 512])
+        # print("rgb max {} rgb min {} hyper max {} hyper min {}".format(rgb.max(), rgb.min(), hyper.max(), hyper.min()))
+        # rgb max 1.0 rgb min -1.0 hyper max 1.0 hyper min -0.9982895851135254
 
         # Forward Pass
         losses, generated = model(Variable(rgb),
@@ -246,6 +248,7 @@ def validate(val_loader, model, epoch, total_steps, visualizer):
     ssim_list = []
     mrae_list = []
     for i, (rgb, hyper) in enumerate(val_loader):
+        # print("rgb max {} rgb min {} hyper max {} hyper min {}".format(rgb.max(), rgb.min(), hyper.max(), hyper.min()))
         generated = model.inference(Variable(rgb), Variable(hyper))
         visualizer.display_samples(rgb, hyper, generated, epoch, total_steps, i, mode=False)
         psnr, ssim, l1, mrae = metrics(generated.cuda(), hyper.cuda())
