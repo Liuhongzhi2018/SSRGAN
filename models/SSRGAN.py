@@ -71,7 +71,7 @@ class SSRGAN(BaseModel):
             self.criterionCSS = networks.CSS()
 
             # Names so we can breakout loss
-            self.loss_names = self.loss_filter('G_GAN', 'G_GAN_Feat', 'G_VGG', 'D_real', 'D_fake')
+            self.loss_names = self.loss_filter('G_GAN', 'G_GAN_Feat', 'G_CSS', 'D_real', 'D_fake')
 
             # initialize optimizers
             # optimizer G
@@ -155,8 +155,12 @@ class SSRGAN(BaseModel):
         # VGG feature matching loss
         loss_G_VGG = 0
 
+        loss_G_CSS = lrm + 10 * lrm_rgb
+
         # Only return the fake_B image if necessary to save BW
-        return [self.loss_filter(loss_G_GAN, loss_G_GAN_Feat, loss_G_VGG, loss_D_real, loss_D_fake), None if not infer else fake_hyper]
+        # return [self.loss_filter(loss_G_GAN, loss_G_GAN_Feat, loss_G_VGG, loss_D_real, loss_D_fake), None if not infer else fake_hyper]
+        return [self.loss_filter(loss_G_GAN, loss_G_GAN_Feat, loss_G_CSS, loss_D_real, loss_D_fake), None if not infer else fake_hyper]
+
 
     def inference(self, rgb, hyper, image=None):
         # Encode Inputs
