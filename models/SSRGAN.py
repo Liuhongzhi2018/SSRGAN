@@ -67,6 +67,9 @@ class SSRGAN(BaseModel):
             self.criterionGAN = networks.GANLoss(use_lsgan=not opt.no_lsgan, tensor=self.Tensor)
             self.criterionFeat = torch.nn.L1Loss()
 
+            # AWAN
+            self.criterionCSS = networks.CSS()
+
             # Names so we can breakout loss
             self.loss_names = self.loss_filter('G_GAN', 'G_GAN_Feat', 'G_VGG', 'D_real', 'D_fake')
 
@@ -135,6 +138,9 @@ class SSRGAN(BaseModel):
         # GAN loss (Fake Passability Loss)
         pred_fake = self.netD.forward(torch.cat((rgb, fake_hyper), dim=1))
         loss_G_GAN = self.criterionGAN(pred_fake, True)
+
+        lrm, lrm_rgb = self.criterionCSS(fake_hyper, real_hyper, rgb)
+        loss_G_GAN += lrm + 10 * lrm_rgb
 
         # GAN feature matching loss
         loss_G_GAN_Feat = 0

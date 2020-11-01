@@ -440,3 +440,36 @@ class Vgg19(torch.nn.Module):
         h_relu5 = self.slice5(h_relu4)
         out = [h_relu1, h_relu2, h_relu3, h_relu4, h_relu5]
         return out
+
+
+class CSS(nn.Module):
+    def __init__(self):
+        super(CSS, self).__init__()
+        self.model_hs2rgb = nn.Conv2d(31, 3, 1, bias=False)
+        filtersPath = '/media/henry/1428521d-8801-4955-b56e-c8da7d0c4817/Research/Spectral/SSRGAN/cie_1964_w_gain.npz'
+        cie_matrix = np.load(filtersPath)['filters']
+        cie_matrix = torch.from_numpy(np.transpose(cie_matrix, [1, 0])).unsqueeze(-1).unsqueeze(-1).float().cuda()
+        self.model_hs2rgb.weight.data = cie_matrix
+
+    def forward(self, outputs, label, rgb_label):
+        rrmse = self.mrae_loss(outputs, label)
+        # hs2rgb
+        with torch.no_grad():
+            rgb_tensor = self.model_hs2rgb(outputs)
+            rgb_tensor = rgb_tensor / 255
+            rgb_tensor = torch.clamp(rgb_tensor, 0, 1) * 255
+            # rgb_tensor = torch.tensor(rgb_tensor, dtype=torch.uint8)
+            rgb_tensor = torch.tensor(rgb_tensor).byte().float()
+            rgb_tensor = rgb_tensor / 255
+        rrmse_rgb = self.rgb_mrae_loss(rgb_tensor, rgb_label)
+        return rrmse, rrmse_rgb
+
+    def mrae_loss(self, outputs, label):
+        error = torch.abs(outputs - label) / label
+        mrae = torch.mean(error.view(-1))
+        return mrae
+
+    def rgb_mrae_loss(self, outputs, label):
+        error = torch.abs(outputs - label)
+        mrae = torch.mean(error.view(-1))
+        return mrae
