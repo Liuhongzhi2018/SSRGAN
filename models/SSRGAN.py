@@ -153,7 +153,7 @@ class SSRGAN(BaseModel):
                         self.criterionFeat(pred_fake[i][j], pred_real[i][j].detach()) * self.opt.lambda_feat
 
         # VGG feature matching loss
-        loss_G_VGG = 0
+        # loss_G_VGG = 0
 
         loss_G_CSS = lrm + 10 * lrm_rgb
 

@@ -172,10 +172,16 @@ def train(train_loader, val_loader, model, optimizer_G, optimizer_D, epoch, tota
         # sum per device losses
         losses = [torch.mean(x) if not isinstance(x, int) else x for x in losses]
         loss_dict = dict(zip(model.loss_names, losses))
+        # print("loss_dict: ", loss_dict)
+        # loss_dict:  {'G_GAN': tensor(12.2738, device='cuda:0', grad_fn=<MeanBackward0>),
+        # 'G_GAN_Feat': tensor(15.5414, device='cuda:0', grad_fn=<MeanBackward0>),
+        # 'G_CSS': tensor(4.9444, device='cuda:0', grad_fn=<MeanBackward0>),
+        # 'D_real': tensor(5.7572, device='cuda:0', grad_fn=<MeanBackward0>),
+        # 'D_fake': tensor(7.2036, device='cuda:0', grad_fn=<MeanBackward0>)}
 
         # calculate final loss scalar
         loss_D = (loss_dict['D_fake'] + loss_dict['D_real']) * 0.5
-        loss_G = loss_dict['G_GAN'] + loss_dict.get('G_GAN_Feat', 0) + loss_dict.get('G_VGG', 0)
+        loss_G = loss_dict['G_GAN'] + loss_dict.get('G_GAN_Feat', 0) + loss_dict.get('G_CSS', 0)
 
         # Backward Pass #
         # update generator weights
