@@ -147,7 +147,7 @@ def main():
                                                                                           iter_path, max_PSNR, max_epoch)
         end_time = time.time()
         epoch_time = end_time - start_time
-        logger.info(" Epoch [%02d], Time:%.9f, Train PSNR: %.4f Train SSIM: %.4f Val PSNR: %.4f Val SSIM: %.4f Val MRAE: %.4f"
+        logger.info(" Epoch [%02d], Time:%.9f, Train PSNR: %.4f SSIM: %.4f Val PSNR: %.4f SSIM: %.4f MRAE: %.4f"
                     % (epoch, epoch_time, train_PSNR, train_SSIM, val_PSNR, val_SSIM, val_MRAE))
 
 
@@ -229,7 +229,8 @@ def train(train_loader, val_loader, model, optimizer_G, optimizer_D, epoch, tota
     if epoch % opt.save_epoch_freq == 0 and val_PSNR > max_PSNR:
         max_PSNR = val_PSNR
         max_epoch = epoch
-        print('Saving the model at the end of epoch %d, iters %d' % (epoch, total_steps))
+        # print('Saving the model at the end of epoch %d, iters %d' % (epoch, total_steps))
+        print('Saving the model at the end of epoch %d' % (epoch))
         model.save(epoch)
         np.savetxt(iter_path, (epoch+1, 0), delimiter=',', fmt='%d')
     model.save('latest')

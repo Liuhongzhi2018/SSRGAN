@@ -35,7 +35,8 @@ class SSRGAN(BaseModel):
         # Discriminator network
         if self.isTrain:
             use_sigmoid = opt.no_lsgan
-            netD_input_nc = input_nc + opt.output_nc
+            # netD_input_nc = input_nc + opt.output_nc
+            netD_input_nc = opt.output_nc
             self.netD = networks.define_D(netD_input_nc, opt.ndf, opt.n_layers_D, opt.norm, use_sigmoid,
                                           opt.num_D, not opt.no_ganFeat_loss, gpu_ids=self.gpu_ids)
 
@@ -49,11 +50,11 @@ class SSRGAN(BaseModel):
         # load networks
         if not self.isTrain or opt.continue_train or opt.load_pretrain:
             pretrained_path = '' if not self.isTrain else opt.load_pretrain
-            self.load_network(self.netG, 'G', opt.which_epoch, pretrained_path)            
+            self.load_network(self.netG, 'G', opt.which_epoch, pretrained_path)
             if self.isTrain:
-                self.load_network(self.netD, 'D', opt.which_epoch, pretrained_path)  
+                self.load_network(self.netD, 'D', opt.which_epoch, pretrained_path)
             if self.gen_features:
-                self.load_network(self.netE, 'E', opt.which_epoch, pretrained_path)              
+                self.load_network(self.netE, 'E', opt.which_epoch, pretrained_path)
 
         # set loss functions and optimizers
         if self.isTrain:
@@ -112,7 +113,8 @@ class SSRGAN(BaseModel):
         return rgb, hyper
 
     def discriminate(self, rgb, hyper, use_pool=False):
-        input_concat = torch.cat((rgb, hyper.detach()), dim=1)
+        # input_concat = torch.cat((rgb, hyper.detach()), dim=1)
+        input_concat = hyper.detach()
         if use_pool:
             fake_query = self.fake_pool.query(input_concat)
             return self.netD.forward(fake_query)
@@ -136,7 +138,8 @@ class SSRGAN(BaseModel):
         loss_D_real = self.criterionGAN(pred_real, True)
 
         # GAN loss (Fake Passability Loss)
-        pred_fake = self.netD.forward(torch.cat((rgb, fake_hyper), dim=1))
+        # pred_fake = self.netD.forward(torch.cat((rgb, fake_hyper), dim=1))
+        pred_fake = self.netD.forward(fake_hyper)
         loss_G_GAN = self.criterionGAN(pred_fake, True)
 
         lrm, lrm_rgb = self.criterionCSS(fake_hyper, real_hyper, rgb)
@@ -160,7 +163,6 @@ class SSRGAN(BaseModel):
         # Only return the fake_B image if necessary to save BW
         # return [self.loss_filter(loss_G_GAN, loss_G_GAN_Feat, loss_G_VGG, loss_D_real, loss_D_fake), None if not infer else fake_hyper]
         return [self.loss_filter(loss_G_GAN, loss_G_GAN_Feat, loss_G_CSS, loss_D_real, loss_D_fake), None if not infer else fake_hyper]
-
 
     def inference(self, rgb, hyper, image=None):
         # Encode Inputs
