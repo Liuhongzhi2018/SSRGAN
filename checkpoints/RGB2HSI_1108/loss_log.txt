@@ -1,0 +1,9 @@
+================ Training Loss (Sun Nov  8 00:55:39 2020) ================
+(epoch: 1, iters: 0, time: 1.751) G_GAN: 43.448 G_GAN_Feat: 17.781 G_CSS: 37.729 D_real: 6.247 D_fake: 3.972 
+(epoch: 1, iters: 5, time: 3.418) G_GAN: 6.594 G_GAN_Feat: 18.821 G_CSS: 4.207 D_real: 2.912 D_fake: 2.051 
+(epoch: 1, iters: 10, time: 5.019) G_GAN: 5.725 G_GAN_Feat: 15.199 G_CSS: 3.609 D_real: 1.603 D_fake: 2.132 
+(epoch: 1, iters: 15, time: 6.656) G_GAN: 5.847 G_GAN_Feat: 9.748 G_CSS: 2.491 D_real: 2.302 D_fake: 3.729 
+(epoch: 1, iters: 20, time: 8.210) G_GAN: 8.152 G_GAN_Feat: 10.742 G_CSS: 2.376 D_real: 5.865 D_fake: 5.437 
+(epoch: 1, iters: 25, time: 9.791) G_GAN: 3.382 G_GAN_Feat: 9.362 G_CSS: 2.060 D_real: 1.223 D_fake: 1.348 
+(epoch: 1, iters: 30, time: 11.994) G_GAN: 5.363 G_GAN_Feat: 11.161 G_CSS: 4.255 D_real: 1.438 D_fake: 0.987 
+(epoch: 1, iters: 35, time: 13.646) G_GAN: 3.358 G_GAN_Feat: 8.515 G_CSS: 2.361 D_real: 1.041 D_fake: 1.037 

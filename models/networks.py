@@ -185,7 +185,9 @@ class LocalEnhancer(nn.Module):
             input_downsampled.append(self.downsample(input_downsampled[-1]))
 
         # output at coarest level
+        H, W = input_downsampled[-1].shape[2], input_downsampled[-1].shape[3]
         output_prev = self.model(input_downsampled[-1])
+        output_prev = F.interpolate(output_prev, size=[H, W], mode='bilinear', align_corners=True)
         # build up one layer at a time
         for n_local_enhancers in range(1, self.n_local_enhancers+1):
             model_downsample = getattr(self, 'model'+str(n_local_enhancers)+'_1')
@@ -193,6 +195,23 @@ class LocalEnhancer(nn.Module):
             input_i = input_downsampled[self.n_local_enhancers-n_local_enhancers]
             output_prev = model_upsample(model_downsample(input_i) + output_prev)
         return output_prev
+
+    # # Origin local enhance model with resize
+    # def forward(self, input):
+    #     # create input pyramid
+    #     input_downsampled = [input]
+    #     for i in range(self.n_local_enhancers):
+    #         input_downsampled.append(self.downsample(input_downsampled[-1]))
+
+    #     # output at coarest level
+    #     output_prev = self.model(input_downsampled[-1])
+    #     # build up one layer at a time
+    #     for n_local_enhancers in range(1, self.n_local_enhancers+1):
+    #         model_downsample = getattr(self, 'model'+str(n_local_enhancers)+'_1')
+    #         model_upsample = getattr(self, 'model'+str(n_local_enhancers)+'_2')
+    #         input_i = input_downsampled[self.n_local_enhancers-n_local_enhancers]
+    #         output_prev = model_upsample(model_downsample(input_i) + output_prev)
+    #     return output_prev
 
 
 class GlobalGenerator(nn.Module):

@@ -54,6 +54,11 @@ python data_preprocess.py --mode val
 ```bash
 python main.py --gpu_ids=1 --name RGB2HSI_1028
 ``` 
+- If you are trying to use local enhance model
+```bash 
+python main.py ----gpu_ids=0 --name RGB2HSI_1108 --netG=local --n_blocks_global=4
+```
+
 ## Continue to train the model
 - If you want to fine the pretrained model.
 ```

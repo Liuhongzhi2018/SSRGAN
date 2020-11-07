@@ -36,6 +36,7 @@ parser.add_argument('--isTrain', type=bool, default=True, help='isTrain')
 parser.add_argument('--checkpoints_dir', type=str, default='./checkpoints', help='models are saved here')
 parser.add_argument('--continue_train', action='store_true', help='continue training: load the latest model')
 parser.add_argument('--load_pretrain', type=str, default='', help='load the pretrained model from the specified location')
+parser.add_argument('--which_epoch', type=str, default='latest', help='which epoch to load? set to latest to use latest cached model')
 parser.add_argument('--display_freq', type=int, default=5, help='frequency of showing training results on screen')
 parser.add_argument('--print_freq', type=int, default=100, help='frequency of showing training results on console')
 parser.add_argument('--verbose', action='store_true', default=False, help='toggles verbose')
@@ -113,10 +114,9 @@ def main():
     optimizer_G, optimizer_D = model.optimizer_G, model.optimizer_D
 
     # Parameters, Loss and Optimizer
-    start_epoch = 1
-    epoch_iter = 0
+    start_epoch = 1 if not opt.continue_train else opt.which_epoch
     # iteration = 0
-    total_steps = (start_epoch-1) * len(train_data) + epoch_iter
+    total_steps = (start_epoch-1) * len(train_data)
     max_PSNR, max_epoch = 0, 0
 
     # visualzation
@@ -125,18 +125,6 @@ def main():
     logger = initialize_logger(log_dir)
 
     iter_path = os.path.join(opt.checkpoints_dir, opt.name, 'iter.txt')
-
-    # # Resume
-    # resume_file = opt.outf + '/net_9epoch.pth'
-    # resume_file = ''
-    # if resume_file:
-    #     if os.path.isfile(resume_file):
-    #         print("=> loading checkpoint '{}'".format(resume_file))
-    #         checkpoint = torch.load(resume_file)
-    #         start_epoch = checkpoint['epoch']
-    #         iteration = checkpoint['iter']
-    #         model.load_state_dict(checkpoint['state_dict'])
-    #         optimizer.load_state_dict(checkpoint['optimizer'])
 
     # start epoch
     for epoch in range(start_epoch, opt.end_epoch):
