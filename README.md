@@ -53,6 +53,7 @@ python data_preprocess.py --mode val
 - Otherwise, run training directly.
 ```bash
 python main.py --gpu_ids=1 --name RGB2HSI_1028
+python main.py --gpu_ids=0 --name RGB2HSI_1108_long --niter=139 --end_epoch=300
 ``` 
 - If you are trying to use local enhance model
 ```bash 
