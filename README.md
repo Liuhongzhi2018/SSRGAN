@@ -59,7 +59,9 @@ python main.py --gpu_ids=0 --name RGB2HSI_1108_long --niter=139 --end_epoch=300
 ```bash 
 python main.py ----gpu_ids=0 --name RGB2HSI_1108 --netG=local --n_blocks_global=4
 
-python main.py ----gpu_ids=0 --name RGB2HSI_1120 --netG=local --n_blocks_global=5 --niter
+python main.py ----gpu_ids=5 --name RGB2HSI_1120 --netG=local --n_blocks_global=5 n_blocks_local=1 --niter=150
+
+python main.py --gpu_ids=5 --name RGB2HSI_1120 --netG=local --n_blocks_global=6 --n_blocks_local=1  --niter=150
 ```
 
 ## Continue to train the model

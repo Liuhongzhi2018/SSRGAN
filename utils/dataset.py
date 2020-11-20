@@ -81,15 +81,15 @@ class HyperDatasetValid(udata.Dataset):
         mat.close()
         return rgb, hyper
 
-    def get_transform(self, cur, opt, params=None, method=Image.BICUBIC, normalize=True):
+    def get_transform(self, cur, opt, params=None, method=Image.BICUBIC, normalize=False):
         transform_list = []
         transform_list += [transforms.ToTensor()]
 
-        # if normalize:
-        #     mt = [0.5] * opt.output_nc if cur == 1 else [0.5] * opt.input_nc
-        #     mtp = tuple(mt)
-        #     # print("mtp: ", mtp)
-        #     transform_list += [transforms.Normalize(mtp, mtp)]
+        if normalize:
+            mt = [0.5] * opt.output_nc if cur == 1 else [0.5] * opt.input_nc
+            mtp = tuple(mt)
+            # print("mtp: ", mtp)
+            transform_list += [transforms.Normalize(mtp, mtp)]
 
         return transforms.Compose(transform_list)
 
@@ -135,7 +135,7 @@ class HyperDatasetTrain(udata.Dataset):
         # RGB shape: torch.Size([3, 482, 512]) hyper shape: torch.Size([31, 482, 512])
         return rgb, hyper
 
-    def get_transform(self, cur, opt, params=None, method=Image.BICUBIC, normalize=True):
+    def get_transform(self, cur, opt, params=None, method=Image.BICUBIC, normalize=False):
         transform_list = []
         # if 'resize' in opt.resize_or_crop:
         #     osize = [opt.loadSize, opt.loadSize]
@@ -158,14 +158,14 @@ class HyperDatasetTrain(udata.Dataset):
 
         transform_list += [transforms.ToTensor()]
 
-        # if normalize:
-        #     mt = []
-        #     if cur == 1:
-        #         mt = [0.5] * opt.output_nc
-        #     elif cur == 2:
-        #         mt = [0.5] * opt.input_nc
-        #     mtp = tuple(mt)
-        #     # print("mtp: ", mtp)
-        #     transform_list += [transforms.Normalize(mtp, mtp)]
+        if normalize:
+            mt = []
+            if cur == 1:
+                mt = [0.5] * opt.output_nc
+            elif cur == 2:
+                mt = [0.5] * opt.input_nc
+            mtp = tuple(mt)
+            # print("mtp: ", mtp)
+            transform_list += [transforms.Normalize(mtp, mtp)]
 
         return transforms.Compose(transform_list)
