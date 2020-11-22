@@ -1,0 +1,14 @@
+================ Training Loss (Sun Nov 22 15:21:09 2020) ================
+(epoch: 1, iters: 0, time: 1.597) G_GAN: 15.435 G_GAN_Feat: 20.177 G_CSS: 7.242 D_real: 7.802 D_fake: 3.451 
+(epoch: 1, iters: 5, time: 3.010) G_GAN: 7.226 G_GAN_Feat: 19.224 G_CSS: 3.678 D_real: 5.222 D_fake: 3.700 
+(epoch: 1, iters: 10, time: 4.419) G_GAN: 16.334 G_GAN_Feat: 13.706 G_CSS: 3.436 D_real: 2.368 D_fake: 12.402 
+(epoch: 1, iters: 15, time: 5.824) G_GAN: 4.454 G_GAN_Feat: 16.996 G_CSS: 2.751 D_real: 0.945 D_fake: 1.851 
+(epoch: 1, iters: 20, time: 7.305) G_GAN: 3.628 G_GAN_Feat: 8.026 G_CSS: 1.792 D_real: 1.480 D_fake: 1.591 
+(epoch: 1, iters: 25, time: 8.728) G_GAN: 3.553 G_GAN_Feat: 14.140 G_CSS: 2.628 D_real: 1.108 D_fake: 1.068 
+(epoch: 1, iters: 30, time: 10.140) G_GAN: 3.686 G_GAN_Feat: 10.693 G_CSS: 2.624 D_real: 0.654 D_fake: 0.647 
+(epoch: 1, iters: 35, time: 11.568) G_GAN: 3.833 G_GAN_Feat: 11.409 G_CSS: 2.768 D_real: 0.975 D_fake: 0.595 
+(epoch: 1, iters: 40, time: 13.011) G_GAN: 2.197 G_GAN_Feat: 6.420 G_CSS: 1.301 D_real: 0.856 D_fake: 0.620 
+(epoch: 1, iters: 45, time: 14.457) G_GAN: 3.445 G_GAN_Feat: 14.392 G_CSS: 2.298 D_real: 0.929 D_fake: 0.801 
+(epoch: 1, iters: 50, time: 15.893) G_GAN: 2.952 G_GAN_Feat: 7.630 G_CSS: 2.073 D_real: 0.708 D_fake: 0.500 
+(epoch: 1, iters: 55, time: 17.332) G_GAN: 6.851 G_GAN_Feat: 12.309 G_CSS: 5.985 D_real: 0.876 D_fake: 0.997 
+(epoch: 1, iters: 60, time: 18.757) G_GAN: 3.593 G_GAN_Feat: 11.735 G_CSS: 2.700 D_real: 0.676 D_fake: 0.499 
