@@ -465,7 +465,7 @@ class CSS(nn.Module):
     def __init__(self):
         super(CSS, self).__init__()
         self.model_hs2rgb = nn.Conv2d(31, 3, 1, bias=False)
-        filtersPath = '/media/henry/1428521d-8801-4955-b56e-c8da7d0c4817/Research/Spectral/SSRGAN/cie_1964_w_gain.npz'
+        filtersPath = '/media/henry/1428521d-8801-4955-b56e-c8da7d0c4817/Github/SSRGAN/cie_1964_w_gain.npz'
         cie_matrix = np.load(filtersPath)['filters']
         cie_matrix = torch.from_numpy(np.transpose(cie_matrix, [1, 0])).unsqueeze(-1).unsqueeze(-1).float()
         self.model_hs2rgb.weight.data = cie_matrix.cuda()

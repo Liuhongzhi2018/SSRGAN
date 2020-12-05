@@ -24,6 +24,7 @@ class SSRGAN(BaseModel):
         self.use_features = opt.instance_feat or opt.label_feat
         self.gen_features = self.use_features and not self.opt.load_features
         input_nc = opt.input_nc
+        self.para = opt.trade_off
 
         # define networks
         # Generator network
@@ -143,7 +144,7 @@ class SSRGAN(BaseModel):
         loss_G_GAN = self.criterionGAN(pred_fake, True)
 
         lrm, lrm_rgb = self.criterionCSS(fake_hyper, real_hyper, rgb)
-        loss_G_GAN += lrm + 10 * lrm_rgb
+        loss_G_GAN += lrm + self.para * lrm_rgb    #  default 10
 
         # GAN feature matching loss
         loss_G_GAN_Feat = 0
@@ -158,7 +159,7 @@ class SSRGAN(BaseModel):
         # VGG feature matching loss
         # loss_G_VGG = 0
 
-        loss_G_CSS = lrm + 10 * lrm_rgb
+        loss_G_CSS = lrm + self.para * lrm_rgb
 
         # Only return the fake_B image if necessary to save BW
         # return [self.loss_filter(loss_G_GAN, loss_G_GAN_Feat, loss_G_VGG, loss_D_real, loss_D_fake), None if not infer else fake_hyper]

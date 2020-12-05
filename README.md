@@ -61,7 +61,15 @@ python main.py ----gpu_ids=0 --name RGB2HSI_1108 --netG=local --n_blocks_global=
 
 python main.py ----gpu_ids=5 --name RGB2HSI_1120 --netG=local --n_blocks_global=5 n_blocks_local=1 --niter=150
 
+python main.py --gpu_ids=5 --name RGB2HSI_1120 --niter=150
+
+# Server 159
 python main.py --gpu_ids=5 --name RGB2HSI_1120 --netG=local --n_blocks_global=6 --n_blocks_local=1  --niter=150
+
+# OUC Lab
+python main.py --gpu_ids=0 --name RGB2HSI_1205 --trade_off 10
+
+python main.py --gpu_ids=1 --name RGB2HSI_12051 --trade_off 1
 ```
 
 ## Continue to train the model
